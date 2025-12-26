@@ -149,22 +149,38 @@ def lf_request(method, **params):
                     log.warning(f"Last.fm invalid JSON: {r.text[:200]}")
                     return None
                     
-        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, ConnectionResetError) as e:
+        except (requests.exceptions.Timeout,
+                requests.exceptions.ConnectionError,
+                requests.exceptions.ChunkedEncodingError,
+                ConnectionResetError,
+                ConnectionAbortedError,
+                BrokenPipeError,
+                OSError) as e:
             if attempt < max_retries - 1:
                 log.warning(f"Last.fm connection error: {e}, tentativo {attempt+1}/{max_retries}")
                 time.sleep(retry_delay * (attempt + 1))
                 continue
             else:
-                log.error(f"Last.fm connection failed dopo {max_retries} tentativi: {e}")
+                log.warning(f"Last.fm connection failed dopo {max_retries} tentativi: {e}")
                 return None
         except Exception as e:
+            # Catch any wrapped connection errors (e.g., from urllib3)
+            error_str = str(e).lower()
+            if any(err in error_str for err in ['connection', 'reset', 'aborted', 'timeout', 'broken pipe']):
+                if attempt < max_retries - 1:
+                    log.warning(f"Last.fm network error: {e}, tentativo {attempt+1}/{max_retries}")
+                    time.sleep(retry_delay * (attempt + 1))
+                    continue
+                else:
+                    log.warning(f"Last.fm network failed dopo {max_retries} tentativi: {e}")
+                    return None
             if attempt < max_retries - 1:
                 log.warning(f"Last.fm error: {e}, tentativo {attempt+1}/{max_retries}")
                 time.sleep(retry_delay * (attempt + 1))
             else:
-                log.error(f"Last.fm error dopo {max_retries} tentativi: {e}")
+                log.warning(f"Last.fm error dopo {max_retries} tentativi: {e}")
                 return None
-    
+
     return None
 
 @rate_limited(MBZ_DELAY)
@@ -214,22 +230,38 @@ def mbz_request(path, **params):
                     log.warning(f"MusicBrainz invalid JSON: {r.text[:200]}")
                     return None
                 
-        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, ConnectionResetError) as e:
+        except (requests.exceptions.Timeout,
+                requests.exceptions.ConnectionError,
+                requests.exceptions.ChunkedEncodingError,
+                ConnectionResetError,
+                ConnectionAbortedError,
+                BrokenPipeError,
+                OSError) as e:
             if attempt < max_retries - 1:
                 log.warning(f"MusicBrainz connection error: {e}, tentativo {attempt+1}/{max_retries}")
                 time.sleep(retry_delay * (attempt + 1))
                 continue
             else:
-                log.error(f"MusicBrainz connection failed dopo {max_retries} tentativi: {e}")
+                log.warning(f"MusicBrainz connection failed dopo {max_retries} tentativi: {e}")
                 return None
         except Exception as e:
+            # Catch any wrapped connection errors (e.g., from urllib3)
+            error_str = str(e).lower()
+            if any(err in error_str for err in ['connection', 'reset', 'aborted', 'timeout', 'broken pipe']):
+                if attempt < max_retries - 1:
+                    log.warning(f"MusicBrainz network error: {e}, tentativo {attempt+1}/{max_retries}")
+                    time.sleep(retry_delay * (attempt + 1))
+                    continue
+                else:
+                    log.warning(f"MusicBrainz network failed dopo {max_retries} tentativi: {e}")
+                    return None
             if attempt < max_retries - 1:
                 log.warning(f"MusicBrainz error: {e}, tentativo {attempt+1}/{max_retries}")
                 time.sleep(retry_delay * (attempt + 1))
             else:
-                log.error(f"MusicBrainz error dopo {max_retries} tentativi: {e}")
+                log.warning(f"MusicBrainz error dopo {max_retries} tentativi: {e}")
                 return None
-    
+
     return None
 
 # ────────────── CORE FUNCTIONS (IDENTICHE) ──────────────
